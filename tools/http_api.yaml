@@ -1,0 +1,9 @@
+id: http_api
+name: Generic HTTP API
+description: Make a generic HTTP request to httpbin
+base_url: https://httpbin.org
+method: POST
+path: /post
+auth_type: none
+parameters:
+  - data

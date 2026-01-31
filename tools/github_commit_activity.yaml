@@ -1,0 +1,10 @@
+id: github_commit_activity
+name: GitHub Commit Activity
+description: Get weekly commit activity for a GitHub repository
+base_url: https://api.github.com
+method: GET
+path: /repos/{owner}/{repo}/stats/commit_activity
+auth_type: bearer
+parameters:
+  - owner
+  - repo

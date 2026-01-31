@@ -1,0 +1,11 @@
+id: github_contributors
+name: GitHub Contributors
+description: Get top contributors for a GitHub repository
+base_url: https://api.github.com
+method: GET
+path: /repos/{owner}/{repo}/contributors
+auth_type: bearer
+parameters:
+  - owner
+  - repo
+  - per_page

@@ -1,0 +1,11 @@
+id: open_meteo
+name: Open-Meteo Weather
+description: Get current weather forecast given latitude and longitude
+base_url: https://api.open-meteo.com
+method: GET
+path: /v1/forecast
+auth_type: none
+parameters:
+  - latitude
+  - longitude
+  - current

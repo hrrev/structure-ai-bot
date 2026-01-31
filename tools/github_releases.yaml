@@ -1,0 +1,11 @@
+id: github_releases
+name: GitHub Releases
+description: Get releases for a GitHub repository
+base_url: https://api.github.com
+method: GET
+path: /repos/{owner}/{repo}/releases
+auth_type: bearer
+parameters:
+  - owner
+  - repo
+  - per_page

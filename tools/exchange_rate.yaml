@@ -1,0 +1,9 @@
+id: exchange_rate
+name: Exchange Rate
+description: Get latest exchange rates for a base currency
+base_url: https://open.er-api.com
+method: GET
+path: /v6/latest/{base}
+auth_type: none
+parameters:
+  - base

@@ -1,0 +1,10 @@
+id: weather_api
+name: Weather API
+description: Get current weather for a city
+base_url: https://wttr.in
+method: GET
+path: "/{city}"
+auth_type: none
+parameters:
+  - city
+  - format

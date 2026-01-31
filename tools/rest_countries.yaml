@@ -1,0 +1,9 @@
+id: rest_countries
+name: REST Countries
+description: Get country details by ISO alpha-2 country code
+base_url: https://restcountries.com
+method: GET
+path: /v3.1/alpha/{code}
+auth_type: none
+parameters:
+  - code

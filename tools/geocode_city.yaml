@@ -1,0 +1,10 @@
+id: geocode_city
+name: Geocode City
+description: Geocode a city name to lat/lon/country using Open-Meteo geocoding API
+base_url: https://geocoding-api.open-meteo.com
+method: GET
+path: /v1/search
+auth_type: none
+parameters:
+  - name
+  - count

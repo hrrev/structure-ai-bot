@@ -1,0 +1,10 @@
+id: github_repo
+name: GitHub Repo Info
+description: Get metadata for a GitHub repository
+base_url: https://api.github.com
+method: GET
+path: /repos/{owner}/{repo}
+auth_type: bearer
+parameters:
+  - owner
+  - repo

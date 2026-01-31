@@ -1,0 +1,8 @@
+id: ip_geolocation
+name: IP Geolocation
+description: Get geolocation data (lat, lon, city, country) from the caller's IP
+base_url: http://ip-api.com
+method: GET
+path: /json/
+auth_type: none
+parameters: []

@@ -1,0 +1,8 @@
+id: httpbin_post
+name: HTTPBin POST
+description: POST JSON data to httpbin (echoes it back, useful as a webhook sink)
+base_url: https://httpbin.org
+method: POST
+path: /post
+auth_type: none
+parameters: []

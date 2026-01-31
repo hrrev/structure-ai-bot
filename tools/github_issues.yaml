@@ -1,0 +1,12 @@
+id: github_issues
+name: GitHub Issues
+description: Get open issues for a GitHub repository
+base_url: https://api.github.com
+method: GET
+path: /repos/{owner}/{repo}/issues
+auth_type: bearer
+parameters:
+  - owner
+  - repo
+  - state
+  - per_page
