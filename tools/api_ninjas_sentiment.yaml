@@ -1,0 +1,16 @@
+id: api_ninjas_sentiment
+name: API Ninjas Sentiment Analysis
+description: Analyze sentiment of a text string
+base_url: https://api.api-ninjas.com
+method: GET
+path: /v1/sentiment
+auth:
+  type: api_key
+  header: X-Api-Key
+request:
+  query_params:
+    - text
+response_extract:
+  fields:
+    sentiment: sentiment
+    score: score

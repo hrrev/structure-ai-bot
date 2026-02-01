@@ -1,0 +1,20 @@
+id: newsapi_search
+name: NewsAPI Search
+description: Search news articles by keyword
+base_url: https://newsapi.org
+method: GET
+path: /v2/everything
+auth:
+  type: api_key
+  header: X-Api-Key
+request:
+  query_params:
+    - q
+    - sortBy
+    - pageSize
+response_extract:
+  fields:
+    headline: articles.0.title
+    source: articles.0.source.name
+    url: articles.0.url
+    description: articles.0.description

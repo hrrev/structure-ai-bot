@@ -59,11 +59,12 @@ def test_single_node():
     validate(w)
 
 
-def test_input_mapping_non_predecessor_raises():
+def test_input_mapping_non_predecessor_now_inferred():
+    """Edge inference auto-adds B→C, so this no longer raises."""
     w = _make_workflow(
         [Step(id="A", tool_id="t"), Step(id="B", tool_id="t"),
          Step(id="C", tool_id="t", input_mapping={"x": "B.field"})],
         [Edge(from_step_id="A", to_step_id="C")],
     )
-    with pytest.raises(WorkflowValidationError, match="not a predecessor"):
-        validate(w)
+    validate(w)  # passes because B→C is auto-inferred
+    assert any(e.from_step_id == "B" and e.to_step_id == "C" for e in w.edges)

@@ -10,6 +10,8 @@ dependencies = [
     "pydantic>=2.0",
     "pyyaml>=6.0",
     "requests>=2.31",
+    "fastapi>=0.104",
+    "uvicorn>=0.24",
 ]
 
 [project.optional-dependencies]
@@ -17,7 +19,14 @@ dev = [
     "pytest>=7.0",
     "pytest-mock>=3.0",
     "responses>=0.23",
+    "httpx>=0.24",
 ]
+
+[project.scripts]
+aaa = "ai_assisted_automation.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ai_assisted_automation*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

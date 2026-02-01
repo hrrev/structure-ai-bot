@@ -1,0 +1,19 @@
+id: spotify_related_artists
+name: Spotify Related Artists
+description: Get artists related to a given Spotify artist
+base_url: https://api.spotify.com
+method: GET
+path: /v1/artists/{artist_id}/related-artists
+auth:
+  type: none
+request:
+  path_params:
+    - artist_id
+  headers:
+    Authorization: "Bearer {{access_token}}"
+response_extract:
+  fields:
+    related_1: artists.0.name
+    related_2: artists.1.name
+    related_3: artists.2.name
+    related_1_genres: artists.0.genres

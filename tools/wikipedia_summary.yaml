@@ -1,0 +1,19 @@
+id: wikipedia_summary
+name: Wikipedia Summary
+description: Get a summary of a Wikipedia article by title
+base_url: https://en.wikipedia.org
+method: GET
+path: /api/rest_v1/page/summary/{title}
+auth:
+  type: none
+request:
+  path_params:
+    - title
+  headers:
+    User-Agent: "AiAssistedAutomation/1.0 (https://github.com/ai-assisted-automation)"
+response_extract:
+  strict: false
+  fields:
+    summary: extract
+    description: description
+    thumbnail: thumbnail.source

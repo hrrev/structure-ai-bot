@@ -1,8 +1,10 @@
+from ai_assisted_automation.graph.edge_inference import infer_edges
 from ai_assisted_automation.models.workflow import Workflow
 from ai_assisted_automation.utils.exceptions import WorkflowValidationError
 
 
 def validate(workflow: Workflow) -> None:
+    workflow.edges = infer_edges(workflow)
     _check_valid_step_references(workflow)
     _check_no_cycles(workflow)
     _check_input_mappings(workflow)

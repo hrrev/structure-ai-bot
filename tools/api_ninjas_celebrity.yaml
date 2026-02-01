@@ -1,0 +1,21 @@
+id: api_ninjas_celebrity
+name: API Ninjas Celebrity
+description: Look up celebrity info by name (age, nationality, net worth, occupation)
+base_url: https://api.api-ninjas.com
+method: GET
+path: /v1/celebrity
+auth:
+  type: api_key
+  header: X-Api-Key
+request:
+  query_params:
+    - name
+response_extract:
+  strict: false
+  fields:
+    celebrity_name: 0.name
+    nationality: 0.nationality
+    net_worth: 0.net_worth
+    birthday: 0.birthday
+    occupation: 0.occupation
+    age: 0.age

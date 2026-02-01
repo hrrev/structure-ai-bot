@@ -1,0 +1,23 @@
+id: spotify_search_artist
+name: Spotify Search Artist
+description: Search for an artist on Spotify by name
+base_url: https://api.spotify.com
+method: GET
+path: /v1/search
+auth:
+  type: none
+request:
+  query_params:
+    - q
+    - type
+    - limit
+  headers:
+    Authorization: "Bearer {{access_token}}"
+response_extract:
+  fields:
+    artist_id: artists.items.0.id
+    name: artists.items.0.name
+    genres: artists.items.0.genres
+    popularity: artists.items.0.popularity
+    image_url: artists.items.0.images.0.url
+    followers: artists.items.0.followers.total

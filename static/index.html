@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow Automation Engine</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fafafa; color: #333; padding: 24px; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 1.5rem; margin-bottom: 20px; }
+h2 { font-size: 1.2rem; margin-bottom: 12px; }
+a { color: #1976d2; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); padding: 16px; margin-bottom: 12px; }
+.card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.16); }
+.btn { display: inline-block; padding: 8px 16px; border-radius: 6px; border: none; background: #1976d2; color: #fff; cursor: pointer; font-size: 0.9rem; }
+.btn:hover { background: #1565c0; }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+.back { display: inline-block; margin-bottom: 12px; font-size: 0.9rem; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
+th { font-weight: 600; font-size: 0.85rem; color: #666; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+.badge-success { background: #c8e6c9; color: #2e7d32; }
+.badge-failed { background: #ffcdd2; color: #c62828; }
+.badge-running { background: #bbdefb; color: #1565c0; }
+.badge-pending { background: #e0e0e0; color: #616161; }
+.badge-skipped { background: #fff9c4; color: #f57f17; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 600; }
+.form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
+#app { min-height: 60vh; }
+svg text { font-family: inherit; }
+.step-detail { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); padding: 16px; margin-top: 16px; }
+.step-detail h3 { margin-bottom: 8px; }
+.step-detail pre { background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 0.8rem; overflow-x: auto; max-height: 200px; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.node-running { animation: pulse 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const app = document.getElementById('app');
+
+function navigate(hash) { window.location.hash = hash; }
+
+async function api(path, opts) {
+  const res = await fetch('/api' + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function statusBadge(s) {
+  return `<span class="badge badge-${s}">${s}</span>`;
+}
+
+function formatTime(t) {
+  if (!t) return '-';
+  return new Date(t).toLocaleString();
+}
+
+// --- Workflow List ---
+async function renderWorkflowList() {
+  const workflows = await api('/workflows');
+  if (!workflows.length) {
+    app.innerHTML = '<h1>Workflows</h1><p>No workflows registered yet.</p>';
+    return;
+  }
+  app.innerHTML = '<h1>Workflows</h1>' + workflows.map(w =>
+    `<div class="card" style="cursor:pointer" onclick="navigate('#/workflows/${w.id}')">
+      <strong>${w.name}</strong> <span style="color:#888; font-size:0.85rem">(${w.id})</span>
+      <div style="margin-top:4px; font-size:0.85rem; color:#666">${w.steps.length} steps &middot; ${w.status}</div>
+    </div>`
+  ).join('');
+}
+
+// --- Workflow Detail ---
+async function renderWorkflowDetail(id) {
+  const [wf, runs] = await Promise.all([api(`/workflows/${id}`), api(`/workflows/${id}/runs`)]);
+  // Find $input.* references
+  const inputs = new Set();
+  wf.steps.forEach(s => Object.values(s.input_mapping || {}).forEach(v => {
+    if (typeof v === 'string' && v.startsWith('$input.')) inputs.add(v.slice(7));
+  }));
+  const inputFields = [...inputs];
+
+  let html = `<a class="back" href="#/">&larr; All Workflows</a>
+    <h1>${wf.name}</h1>
+    <div class="card"><strong>ID:</strong> ${wf.id} &middot; <strong>Status:</strong> ${wf.status} &middot; <strong>Steps:</strong> ${wf.steps.length}</div>`;
+
+  // New run form
+  html += `<h2 style="margin-top:16px">New Run</h2><div class="card"><form id="run-form">`;
+  if (inputFields.length) {
+    inputFields.forEach(name => {
+      html += `<div class="form-group"><label>${name}</label><input name="${name}" placeholder="${name}"></div>`;
+    });
+  } else {
+    html += `<p style="font-size:0.85rem; color:#888">No user inputs required.</p>`;
+  }
+  html += `<button type="submit" class="btn">Run Workflow</button></form></div>`;
+
+  // Run history
+  html += `<h2 style="margin-top:16px">Run History</h2>`;
+  if (runs.length) {
+    html += `<table><thead><tr><th>Run ID</th><th>Status</th><th>Started</th><th>Finished</th></tr></thead><tbody>`;
+    runs.forEach(r => {
+      html += `<tr style="cursor:pointer" onclick="navigate('#/runs/${r.id}')">
+        <td><code>${r.id.slice(0,8)}...</code></td><td>${statusBadge(r.status)}</td>
+        <td>${formatTime(r.started_at)}</td><td>${formatTime(r.finished_at)}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  } else {
+    html += `<p style="font-size:0.85rem; color:#888">No runs yet.</p>`;
+  }
+  app.innerHTML = html;
+
+  document.getElementById('run-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const user_inputs = {};
+    for (const [k, v] of fd.entries()) if (v) user_inputs[k] = v;
+    const { run_id } = await api(`/workflows/${id}/runs`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_inputs })
+    });
+    navigate(`#/runs/${run_id}`);
+  };
+}
+
+// --- Run Detail with DAG ---
+async function renderRunDetail(runId) {
+  let run;
+  try { run = await api(`/runs/${runId}`); } catch {
+    // Run may not be saved yet, wait a moment
+    await new Promise(r => setTimeout(r, 500));
+    run = await api(`/runs/${runId}`);
+  }
+
+  // Load workflow for edges/step info
+  const wf = await api(`/workflows/${run.workflow_id}`);
+
+  app.innerHTML = `<a class="back" href="#/workflows/${run.workflow_id}">&larr; Back to Workflow</a>
+    <h1>Run <code>${runId.slice(0,8)}...</code></h1>
+    <div class="card" id="run-meta">Status: ${statusBadge(run.status)} &middot; Started: ${formatTime(run.started_at)}</div>
+    <div id="dag-container" style="margin-top:16px; overflow-x:auto"></div>
+    <div id="step-panel"></div>`;
+
+  const stepMap = {};
+  wf.steps.forEach(s => stepMap[s.id] = s);
+
+  function renderDAG(stepResults) {
+    const results = {};
+    stepResults.forEach(r => results[r.step_id] = r);
+
+    // Compute levels via BFS
+    const adj = {}; const inDeg = {};
+    wf.steps.forEach(s => { adj[s.id] = []; inDeg[s.id] = 0; });
+    wf.edges.forEach(e => { adj[e.from_step_id].push(e.to_step_id); inDeg[e.to_step_id]++; });
+    const levels = {}; const q = [];
+    wf.steps.forEach(s => { if (inDeg[s.id] === 0) { levels[s.id] = 0; q.push(s.id); } });
+    while (q.length) {
+      const n = q.shift();
+      adj[n].forEach(c => { levels[c] = Math.max(levels[c] || 0, levels[n] + 1); if (--inDeg[c] === 0) q.push(c); });
+    }
+
+    // Group by level
+    const byLevel = {};
+    Object.entries(levels).forEach(([id, lv]) => { (byLevel[lv] = byLevel[lv] || []).push(id); });
+    const maxLevel = Math.max(...Object.values(levels), 0);
+    const maxPerLevel = Math.max(...Object.values(byLevel).map(a => a.length), 1);
+
+    const nodeW = 180, nodeH = 52, gapX = 80, gapY = 36;
+    const svgW = (maxLevel + 1) * (nodeW + gapX) + 40;
+    const svgH = maxPerLevel * (nodeH + gapY) + 40;
+
+    const pos = {};
+    Object.entries(byLevel).forEach(([lv, ids]) => {
+      const x = 20 + parseInt(lv) * (nodeW + gapX);
+      const totalH = ids.length * nodeH + (ids.length - 1) * gapY;
+      const startY = (svgH - totalH) / 2;
+      ids.forEach((id, i) => { pos[id] = { x, y: startY + i * (nodeH + gapY) }; });
+    });
+
+    const colors = { pending: '#e0e0e0', running: '#64b5f6', success: '#81c784', failed: '#e57373', skipped: '#fff176' };
+
+    // Derive edge labels from input_mapping
+    function edgeLabels(fromId, toId) {
+      const target = stepMap[toId];
+      if (!target || !target.input_mapping) return '';
+      const fields = [];
+      Object.values(target.input_mapping).forEach(v => {
+        if (typeof v === 'string' && v.startsWith(fromId + '.')) {
+          fields.push(v.slice(fromId.length + 1).split('.')[0]);
+        }
+      });
+      return [...new Set(fields)].join(', ');
+    }
+
+    let svg = `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#999"/></marker></defs>`;
+
+    // Edges with labels
+    wf.edges.forEach(e => {
+      const f = pos[e.from_step_id], t = pos[e.to_step_id];
+      if (!f || !t) return;
+      const x1 = f.x+nodeW, y1 = f.y+nodeH/2, x2 = t.x, y2 = t.y+nodeH/2;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>`;
+      const label = edgeLabels(e.from_step_id, e.to_step_id);
+      if (label) {
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - 6;
+        svg += `<text x="${mx}" y="${my}" text-anchor="middle" font-size="9" fill="#888" pointer-events="none">${label}</text>`;
+      }
+    });
+
+    // Nodes with name + id
+    wf.steps.forEach(s => {
+      const p = pos[s.id]; if (!p) return;
+      const status = results[s.id]?.status || 'pending';
+      const cls = status === 'running' ? ' class="node-running"' : '';
+      svg += `<rect x="${p.x}" y="${p.y}" width="${nodeW}" height="${nodeH}" rx="8" fill="${colors[status]}" stroke="#bbb" stroke-width="1"${cls} style="cursor:pointer; transition: fill 0.3s ease" data-step="${s.id}"/>`;
+      if (s.name) {
+        svg += `<text x="${p.x + nodeW/2}" y="${p.y + 22}" text-anchor="middle" font-size="12" font-weight="bold" fill="#333" pointer-events="none">${s.name}</text>`;
+        svg += `<text x="${p.x + nodeW/2}" y="${p.y + 38}" text-anchor="middle" font-size="10" fill="#888" pointer-events="none">${s.id}</text>`;
+      } else {
+        svg += `<text x="${p.x + nodeW/2}" y="${p.y + nodeH/2 + 4}" text-anchor="middle" font-size="12" fill="#333" pointer-events="none">${s.id}</text>`;
+      }
+    });
+    svg += '</svg>';
+    document.getElementById('dag-container').innerHTML = svg;
+
+    // Click handlers
+    document.querySelectorAll('rect[data-step]').forEach(el => {
+      el.onclick = () => showStepDetail(el.dataset.step, results);
+    });
+  }
+
+  function showStepDetail(stepId, results) {
+    const r = results[stepId] || {};
+    const s = stepMap[stepId] || {};
+    const dur = r.started_at && r.finished_at ? ((new Date(r.finished_at) - new Date(r.started_at)) / 1000).toFixed(2) + 's' : '-';
+    const output = r.output_data ? JSON.stringify(r.output_data, null, 2) : '-';
+    const title = s.name ? `${s.name} <span style="color:#888; font-size:0.9rem">(${stepId})</span>` : stepId;
+
+    // Build input mapping table
+    let mappingHtml = '';
+    if (s.input_mapping && Object.keys(s.input_mapping).length) {
+      mappingHtml = `<p style="margin-top:12px"><strong>Input Mapping:</strong></p><table style="font-size:0.8rem; margin-top:4px">`;
+      Object.entries(s.input_mapping).forEach(([param, source]) => {
+        let resolved = '';
+        if (source.startsWith('step_')) {
+          const parts = source.split('.');
+          const depId = parts[0];
+          const depResult = results[depId];
+          if (depResult && depResult.output_data) {
+            let val = depResult.output_data;
+            for (let i = 1; i < parts.length && val != null; i++) {
+              val = Array.isArray(val) ? val[parseInt(parts[i])] : val[parts[i]];
+            }
+            if (val !== undefined) resolved = ` → <code>${JSON.stringify(val).slice(0,80)}</code>`;
+          }
+        }
+        mappingHtml += `<tr><td><code>${param}</code></td><td>← <code>${source}</code>${resolved}</td></tr>`;
+      });
+      mappingHtml += `</table>`;
+    }
+
+    document.getElementById('step-panel').innerHTML = `<div class="step-detail">
+      <h3>${title}</h3>
+      <p><strong>Tool:</strong> ${s.tool_id || '-'} &middot; <strong>Status:</strong> ${statusBadge(r.status || 'pending')} &middot; <strong>Duration:</strong> ${dur}</p>
+      ${s.description ? `<p style="margin-top:8px; color:#666">${s.description}</p>` : ''}
+      ${r.error ? `<p style="margin-top:8px; color:#c62828"><strong>Error:</strong> ${r.error}</p>` : ''}
+      ${mappingHtml}
+      <p style="margin-top:8px"><strong>Output:</strong></p>
+      <pre>${output.length > 2000 ? output.slice(0,2000) + '\n...(truncated)' : output}</pre>
+    </div>`;
+  }
+
+  renderDAG(run.step_results);
+
+  // SSE for live updates
+  if (run.status === 'running') {
+    const source = new EventSource(`/api/runs/${runId}/stream`);
+    source.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.done) { source.close(); document.getElementById('run-meta').innerHTML = `Status: ${statusBadge(data.status)} &middot; Started: ${formatTime(data.started_at)} &middot; Finished: ${formatTime(data.finished_at)}`; }
+      renderDAG(data.step_results);
+    };
+    source.onerror = () => source.close();
+  }
+}
+
+// --- Router ---
+async function route() {
+  const hash = window.location.hash || '#/';
+  try {
+    if (hash.startsWith('#/runs/')) {
+      await renderRunDetail(hash.slice(7));
+    } else if (hash.startsWith('#/workflows/')) {
+      await renderWorkflowDetail(hash.slice(12));
+    } else {
+      await renderWorkflowList();
+    }
+  } catch (e) {
+    app.innerHTML = `<div class="card" style="color:#c62828">Error: ${e.message}</div>`;
+  }
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

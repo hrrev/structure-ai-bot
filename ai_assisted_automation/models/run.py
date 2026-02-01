@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ class StepStatus(str, Enum):
     FAILED = "failed"
     SKIPPED = "skipped"
     PENDING = "pending"
+    RUNNING = "running"
 
 
 class StepResult(BaseModel):
@@ -21,6 +23,8 @@ class StepResult(BaseModel):
     status: StepStatus
     output_data: dict[str, Any] = {}
     error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
 
 class Run(BaseModel):
@@ -29,3 +33,5 @@ class Run(BaseModel):
     status: RunStatus
     step_results: list[StepResult] = []
     user_inputs: dict[str, Any] = {}
+    started_at: datetime | None = None
+    finished_at: datetime | None = None

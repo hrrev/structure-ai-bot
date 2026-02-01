@@ -1,0 +1,23 @@
+id: spotify_top_tracks
+name: Spotify Top Tracks
+description: Get an artist's top tracks on Spotify
+base_url: https://api.spotify.com
+method: GET
+path: /v1/artists/{artist_id}/top-tracks
+auth:
+  type: none
+request:
+  path_params:
+    - artist_id
+  query_params:
+    - market
+  headers:
+    Authorization: "Bearer {{access_token}}"
+response_extract:
+  fields:
+    track_1: tracks.0.name
+    track_1_album: tracks.0.album.name
+    track_2: tracks.1.name
+    track_3: tracks.2.name
+    track_4: tracks.3.name
+    track_5: tracks.4.name

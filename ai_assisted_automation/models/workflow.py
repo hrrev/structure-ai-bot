@@ -12,6 +12,7 @@ class Step(BaseModel):
     tool_id: str
     input_mapping: dict[str, str] = {}
     description: str = ""
+    name: str = ""
 
 
 class Edge(BaseModel):

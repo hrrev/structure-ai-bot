@@ -1,0 +1,18 @@
+id: youtube_video_stats
+name: YouTube Video Stats
+description: Get statistics for a YouTube video by ID
+base_url: https://www.googleapis.com
+method: GET
+path: /youtube/v3/videos
+auth:
+  type: api_key
+  header: x-goog-api-key
+request:
+  query_params:
+    - id
+    - part
+response_extract:
+  fields:
+    view_count: items.0.statistics.viewCount
+    like_count: items.0.statistics.likeCount
+    comment_count: items.0.statistics.commentCount
