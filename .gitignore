@@ -5,3 +5,15 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+
+# API keys and secrets
+*.pat
+*_key.txt
+*_token.txt
+.env
+
+# Runtime data (workflows/runs stored by the server)
+data/
+
+# Claude Code session files
+.claude/

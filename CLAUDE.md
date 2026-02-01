@@ -61,9 +61,10 @@ examples/                        # runnable scripts (outside package, standard P
   github_intel_workflow.py       # 6-step: repo info → 4 parallel fetches → POST summary
   travel_briefing_workflow.py    # 5-step: geocode → weather + country + exchange → POST briefing
   artist_intel_reduced_workflow.py  # 8-step: Wikipedia + YouTube + News + Celebrity fan-out/fan-in
+  anime_intel_graphql_workflow.py   # 10-step: 3 GraphQL + 4 REST, fan-out/fan-in, chained GitHub mutations
 static/
   index.html                     # SPA with DAG visualization, SSE live updates, step detail panel
-tests/                           # 88 tests total
+tests/                           # 113 tests total
   test_api_client.py             # 7 tests — legacy path
   test_api_client_extended.py    # 13 tests — new config path + backward compat
   test_api_client_form_encoded.py # form-encoded request tests
@@ -77,7 +78,7 @@ tests/                           # 88 tests total
   test_workflow_executor_tracking.py  # run tracking + callbacks
   test_api.py                    # REST API tests
   test_storage.py                # JSON store tests
-tools/                           # tool YAML definitions (10 tools)
+tools/                           # tool YAML definitions (18 tools, including 8 GraphQL)
 ```
 
 ## How to Run
@@ -87,6 +88,45 @@ pip install -e ".[dev]"
 pytest tests/ -v
 python examples/geo_weather_workflow.py
 ```
+
+## Environment Variables (API Keys)
+
+Export all keys needed by the tool configs before running workflows or the server:
+
+```bash
+# YouTube Data API v3 key (for youtube_search, youtube_video_stats)
+export YOUTUBE_API_KEY="your-key-here"
+
+# API Ninjas key (for api_ninjas_sentiment, api_ninjas_celebrity)
+export API_NINJAS_KEY="your-key-here"
+
+# NewsAPI key (for newsapi_search)
+export NEWSAPI_KEY="your-key-here"
+
+# GitHub Personal Access Token with repo scope (for GitHub GraphQL tools)
+# Can be read from file: export GITHUB_PAT=$(cat ~/.ssh/github_general_token.pat)
+export GITHUB_PAT="ghp_your-token-here"
+```
+
+## Registering Workflows & Running the Server
+
+Each example workflow supports `--register` to export its JSON definition. The CLI `register` command saves it to the JSON store. The `serve` command starts the web UI + REST API.
+
+```bash
+# 1. Export a workflow to JSON
+python examples/anime_intel_graphql_workflow.py --register > /tmp/anime_workflow.json
+
+# 2. Register it with the store (saves to data/ directory)
+python -m ai_assisted_automation.cli register /tmp/anime_workflow.json
+
+# 3. Start the server (reads API keys from env vars)
+python -m ai_assisted_automation.cli serve
+
+# 4. Open http://localhost:8000 — workflow appears in the DAG viewer
+#    Select workflow → provide inputs → run → watch SSE live updates
+```
+
+The CLI `serve` command automatically wires env vars to tool configs for all known tools (YouTube, API Ninjas, NewsAPI, GitHub GraphQL). Custom port: `--port 9000`. Custom data dir: `--data-dir ./mydata`.
 
 ## Key Conventions
 
@@ -171,6 +211,16 @@ Built:
 - **Artist Intel workflow** (8-step, 4 APIs + httpbin, fan-out/fan-in)
 - Workflow executor enhanced with RUNNING status, timestamps, and step-complete callbacks
 
+### Session 5: GraphQL Support & Complex Mixed Workflows
+
+Built:
+- **8 new tool YAMLs** — 6 GraphQL (AniList, Countries, Rick & Morty, GitHub repo query, GitHub createIssue mutation, GitHub addComment mutation) + 2 dedicated workflow-specific tools with full markdown templates baked into GraphQL mutations
+- **Anime Intel workflow** (10-step, 3 GraphQL APIs + 4 REST APIs): fan-out at level 0, dependent processing at level 1, fan-in to GitHub createIssue mutation at level 2, chained addComment mutation at level 3
+- **GraphQL queries and mutations confirmed working** with the existing engine — no engine changes needed. GraphQL is just `POST` with `{"query": "..."}` body template, exactly as designed in Session 3.
+- **Dedicated tool YAMLs for complex data aggregation**: when a step needs to compose data from many upstream steps into a single API call (e.g., a GitHub issue body), create a workflow-specific tool YAML with the full template baked in. All upstream fields come via `input_mapping`, the tool's `request.body` template renders them. Generic tools (`github_graphql_create_issue`) stay generic; specialized aggregation tools (`github_create_anime_report`) encode the template.
+- **GraphQL string escaping limitation identified**: free-text fields containing quotes/newlines break GraphQL query strings when embedded via template rendering (the rendered value goes inside a GraphQL string literal). Workaround: use short/safe extracted fields in mutation templates, avoid embedding raw paragraphs. The REST path (`requests.post(json=...)`) handles escaping automatically, but GraphQL mutations require the value inside the query string itself.
+- **CLI `serve` updated** with GitHub GraphQL tool configs (GITHUB_PAT env var)
+
 ## What's Not Built Yet
 
 - `planner/` — LLM-based workflow generation from natural language (the core value prop, Phase 2)
@@ -189,3 +239,7 @@ Built:
 ## Git Author
 
 Himanshu Rajoria <himanshurajoriaiitkgp@gmail.com>
+
+## Git Commit Rules
+
+- Do NOT add `Co-Authored-By` lines to commit messages.
