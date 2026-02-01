@@ -1,0 +1,22 @@
+id: anilist_anime
+name: AniList Anime Search
+description: Search for anime metadata on AniList (GraphQL)
+base_url: https://graphql.anilist.co
+method: POST
+auth:
+  type: none
+request:
+  body:
+    query: "{ Media(search: \"{{search}}\", type: ANIME) { title { english romaji } averageScore genres studios(isMain: true) { nodes { name } } episodes status season seasonYear } }"
+response_extract:
+  strict: false
+  fields:
+    title_english: data.Media.title.english
+    title_romaji: data.Media.title.romaji
+    score: data.Media.averageScore
+    genres: data.Media.genres
+    studio_name: data.Media.studios.nodes.0.name
+    episodes: data.Media.episodes
+    status: data.Media.status
+    season: data.Media.season
+    season_year: data.Media.seasonYear

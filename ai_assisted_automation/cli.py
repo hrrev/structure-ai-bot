@@ -18,6 +18,11 @@ def cmd_serve(args):
         "newsapi_search": {"auth_token": os.environ.get("NEWSAPI_KEY", "")},
         "api_ninjas_sentiment": {"auth_token": os.environ.get("API_NINJAS_KEY", "")},
         "api_ninjas_celebrity": {"auth_token": os.environ.get("API_NINJAS_KEY", "")},
+        "github_graphql_repo": {"auth_token": os.environ.get("GITHUB_PAT", "")},
+        "github_graphql_create_issue": {"auth_token": os.environ.get("GITHUB_PAT", "")},
+        "github_graphql_add_comment": {"auth_token": os.environ.get("GITHUB_PAT", "")},
+        "github_create_anime_report": {"auth_token": os.environ.get("GITHUB_PAT", "")},
+        "github_add_anime_comment": {"auth_token": os.environ.get("GITHUB_PAT", "")},
     }
 
     app = create_app(data_dir=args.data_dir, tools_dir=args.tools_dir, tool_configs=tool_configs)

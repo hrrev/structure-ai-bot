@@ -1,0 +1,18 @@
+id: countries_graphql
+name: Countries Info (GraphQL)
+description: Get country details from the Countries GraphQL API
+base_url: https://countries.trevorblades.com/graphql
+method: POST
+auth:
+  type: none
+request:
+  body:
+    query: "{ country(code: \"{{code}}\") { name capital currency continent { name } languages { name } } }"
+response_extract:
+  strict: false
+  fields:
+    country_name: data.country.name
+    capital: data.country.capital
+    currency: data.country.currency
+    continent: data.country.continent.name
+    languages: data.country.languages

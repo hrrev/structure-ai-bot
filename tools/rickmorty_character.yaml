@@ -1,0 +1,17 @@
+id: rickmorty_character
+name: Rick and Morty Character Search (GraphQL)
+description: Search Rick and Morty characters by name (GraphQL)
+base_url: https://rickandmortyapi.com/graphql
+method: POST
+auth:
+  type: none
+request:
+  body:
+    query: "{ characters(filter: { name: \"{{name}}\" }) { results { name status species origin { name dimension } } } }"
+response_extract:
+  strict: false
+  fields:
+    character_name: data.characters.results.0.name
+    character_status: data.characters.results.0.status
+    character_species: data.characters.results.0.species
+    origin_name: data.characters.results.0.origin.name

@@ -1,0 +1,14 @@
+id: github_add_anime_comment
+name: GitHub Add Anime Enrichment Comment (GraphQL)
+description: Add an enrichment comment with Wikipedia description and additional details via GraphQL mutation.
+base_url: https://api.github.com/graphql
+method: POST
+auth:
+  type: bearer
+request:
+  body:
+    query: "mutation { addComment(input: {subjectId: \"{{subject_id}}\", body: \"## Enrichment Data\\n\\n**Wikipedia Description:** {{wiki_description}}\\n\\n**AniList Title (Romaji):** {{title_romaji}}\\n\\n**Repo:** {{repo_name}} ({{repo_stars}} stars)\\n\\n---\\n*Auto-enrichment by AI Workflow Engine*\"}) { commentEdge { node { id url } } } }"
+response_extract:
+  fields:
+    comment_id: data.addComment.commentEdge.node.id
+    comment_url: data.addComment.commentEdge.node.url
