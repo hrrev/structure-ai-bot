@@ -23,6 +23,7 @@ class StepResult(BaseModel):
     status: StepStatus
     output_data: dict[str, Any] = {}
     error: str | None = None
+    warnings: list[str] = []
     started_at: datetime | None = None
     finished_at: datetime | None = None
 

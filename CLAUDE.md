@@ -4,7 +4,7 @@
 
 User describes a goal in natural language → LLM decomposes it into a DAG of API call steps → User sees a simplified graph view and approves → System executes the graph → Run history tracked. The graph is saved as a reusable workflow: first run is validated, subsequent runs execute the same fixed graph automatically. Failures are reported, not auto-healed.
 
-This is a **backend-first** Python project. Frontend will come later.
+This is a **backend-first** Python project with a web UI for workflow visualization and execution.
 
 ## Two Distinct Phases of Operation
 
@@ -47,17 +47,26 @@ ai_assisted_automation/          # importable package (NOT scripts)
   utils/
     template_renderer.py         # render_template(): recursive, type-preserving {{key}} substitution
     exceptions.py                # WorkflowValidationError, StateResolutionError, StepExecutionError
+  api/
+    app.py                       # FastAPI app factory, create_app()
+    routes.py                    # REST endpoints: workflows CRUD, runs, SSE streaming
+    sse.py                       # SSE helper for live run progress
+  storage/
+    json_store.py                # JSON file-based persistence for workflows and runs
+  cli.py                         # CLI: serve (with env-var tool_configs) and register commands
   config/                        # placeholder — no config logic yet
   planner/                       # placeholder — LLM planner not yet implemented
-  api/                           # placeholder — no REST API yet
-  storage/                       # placeholder — no persistence yet
 examples/                        # runnable scripts (outside package, standard Python convention)
   geo_weather_workflow.py        # 3-step: IP geolocation → weather + country info
   github_intel_workflow.py       # 6-step: repo info → 4 parallel fetches → POST summary
   travel_briefing_workflow.py    # 5-step: geocode → weather + country + exchange → POST briefing
-tests/                           # 67 tests total
+  artist_intel_reduced_workflow.py  # 8-step: Wikipedia + YouTube + News + Celebrity fan-out/fan-in
+static/
+  index.html                     # SPA with DAG visualization, SSE live updates, step detail panel
+tests/                           # 88 tests total
   test_api_client.py             # 7 tests — legacy path
   test_api_client_extended.py    # 13 tests — new config path + backward compat
+  test_api_client_form_encoded.py # form-encoded request tests
   test_edge_inference.py         # 6 tests
   test_template_renderer.py      # 17 tests
   test_graph_validator.py        # 7 tests
@@ -65,7 +74,10 @@ tests/                           # 67 tests total
   test_state_manager.py          # 8 tests
   test_step_executor.py          # 2 tests
   test_workflow_executor.py      # 3 tests
-tools/                           # tool YAML definitions (13 tools)
+  test_workflow_executor_tracking.py  # run tracking + callbacks
+  test_api.py                    # REST API tests
+  test_storage.py                # JSON store tests
+tools/                           # tool YAML definitions (10 tools)
 ```
 
 ## How to Run
@@ -148,12 +160,22 @@ Design decisions:
 - **LLM-friendly graph format**: Format is already good for LLM generation — flat step list, explicit input_mapping, edge auto-inference reduces errors, response_extract.fields tells the LLM what's available downstream.
 - **Tool creation from API docs**: The YAML format is explicit enough that an LLM can generate a tool definition directly from API documentation.
 
+### Session 4: Web UI, REST API, Storage, CLI
+
+Built:
+- **FastAPI REST API** with endpoints for workflow CRUD, run creation, SSE streaming for live progress
+- **JSON file storage** for workflows and runs (data/ directory)
+- **CLI** (`python -m ai_assisted_automation.cli serve/register`) with env-var tool_configs
+- **Web UI** (static/index.html SPA): workflow list, run form, DAG visualization with named nodes, data-flow edge labels, input mapping panel, SSE live updates
+- **Step.name field** for human-readable node labels in DAG
+- **Artist Intel workflow** (8-step, 4 APIs + httpbin, fan-out/fan-in)
+- Workflow executor enhanced with RUNNING status, timestamps, and step-complete callbacks
+
 ## What's Not Built Yet
 
 - `planner/` — LLM-based workflow generation from natural language (the core value prop, Phase 2)
-- `api/` — REST API to expose the engine (FastAPI, natural fit with Pydantic models)
-- `storage/` — workflow and run persistence (JSON files for dev, DB for prod)
 - `config/` — runtime configuration (timeouts, retries, provider settings)
+- Step-level input/output validation (e.g., not_null checks on outputs)
 - Pre/post hook middleware chain (discussed, deferred)
 - Exploration-based graph planning (discussed, deferred)
 - Decision + transform node types (Phase 2 — scoped LLM calls at decision points)

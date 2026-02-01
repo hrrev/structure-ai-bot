@@ -9,7 +9,7 @@ from ai_assisted_automation.graph.topological_sort import sort as topo_sort
 from ai_assisted_automation.graph.validator import validate
 from ai_assisted_automation.models.run import Run, RunStatus, StepResult, StepStatus
 from ai_assisted_automation.models.tool import ToolDefinition
-from ai_assisted_automation.models.workflow import Workflow
+from ai_assisted_automation.models.workflow import StepSeverity, Workflow
 
 
 def execute(
@@ -46,13 +46,22 @@ def execute(
 
     result_index = {sid: i for i, sid in enumerate(order)}
 
-    failed = False
+    # Build predecessor map from edges
+    predecessors: dict[str, set[str]] = {s.id: set() for s in workflow.steps}
+    for edge in workflow.edges:
+        predecessors[edge.to_step_id].add(edge.from_step_id)
+
+    failed_steps: set[str] = set()
+    critical_failure = False
+
     for step_id in order:
         idx = result_index[step_id]
 
-        if failed:
+        # Skip if any predecessor failed (or was skipped due to failure)
+        if failed_steps & predecessors.get(step_id, set()):
             run.step_results[idx].status = StepStatus.SKIPPED
             run.step_results[idx].finished_at = datetime.now(timezone.utc)
+            failed_steps.add(step_id)
             if on_step_complete:
                 on_step_complete(run)
             continue
@@ -72,15 +81,18 @@ def execute(
         run.step_results[idx].status = result.status
         run.step_results[idx].output_data = result.output_data
         run.step_results[idx].error = result.error
+        run.step_results[idx].warnings = result.warnings
         run.step_results[idx].finished_at = datetime.now(timezone.utc)
 
         if on_step_complete:
             on_step_complete(run)
 
         if result.status == StepStatus.FAILED:
-            failed = True
+            failed_steps.add(step_id)
+            if step.severity == StepSeverity.CRITICAL:
+                critical_failure = True
 
-    run.status = RunStatus.FAILED if failed else RunStatus.SUCCESS
+    run.status = RunStatus.FAILED if critical_failure else RunStatus.SUCCESS
     run.finished_at = datetime.now(timezone.utc)
     if on_step_complete:
         on_step_complete(run)

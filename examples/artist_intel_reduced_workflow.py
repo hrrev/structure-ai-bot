@@ -28,7 +28,7 @@ import os
 import sys
 
 from ai_assisted_automation.executor.workflow_executor import execute
-from ai_assisted_automation.models.workflow import Edge, Step, Workflow
+from ai_assisted_automation.models.workflow import Edge, Step, StepSeverity, StepValidation, Workflow
 from ai_assisted_automation.registry.tool_registry import ToolRegistry
 
 
@@ -96,6 +96,12 @@ def build_workflow() -> Workflow:
                 input_mapping={"name": "$input.artist_name"},
                 description="Look up celebrity info (age, nationality, net worth)",
                 name="Celebrity Info",
+                severity=StepSeverity.NON_CRITICAL,
+                validations=[
+                    StepValidation(field="nationality", check="not_null", critical=False, message="Nationality not available"),
+                    StepValidation(field="net_worth", check="not_null", critical=False, message="Net worth not available"),
+                    StepValidation(field="age", check="not_null", critical=False, message="Age not available"),
+                ],
             ),
             # step_7: Sentiment on Wikipedia summary (depends on step_1)
             Step(

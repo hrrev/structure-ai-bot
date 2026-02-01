@@ -49,7 +49,7 @@ Edges are `from_step_id → to_step_id` pairs. They're now semi-optional: if the
 
 #### `run.py` — Execution results
 
-Immutable record of a workflow execution. Each step gets a `StepResult` with status, output data, and optional error. Deliberately simple — no retry tracking, no timing, no partial outputs. Those belong in a future observability layer.
+Record of a workflow execution. Each step gets a `StepResult` with status (`PENDING`, `RUNNING`, `SUCCESS`, `FAILED`, `SKIPPED`), output data, optional error, and `started_at`/`finished_at` timestamps. `Run` itself also has timestamps and a `user_inputs` dict. The executor pre-populates all step results as PENDING, then updates them in place as steps execute, enabling SSE streaming of live progress.
 
 ### 2. Graph Operations (`graph/`)
 
@@ -193,19 +193,8 @@ The topo sort produces a flat list, but steps at the same "level" (same in-degre
 
 Requires making `StateManager` thread-safe (or using per-step snapshots).
 
-#### 3. REST API (`api/`)
-Expose the engine via HTTP so external systems can:
-- Submit workflows for execution
-- Check run status
-- Retrieve run results
-
-FastAPI is the natural choice given Pydantic models are already defined.
-
-#### 4. Persistence (`storage/`)
-Store workflows and runs. Options:
-- SQLite for single-node
-- PostgreSQL for production
-- Simple JSON file storage for development
+#### 3. Step-Level Input/Output Validation
+Steps can succeed with null/empty outputs that silently propagate downstream. Add a `validations` list to `Step` with rules like `not_null`, `not_empty`, `regex`, `type` checks on input or output fields. Validation runs in `step_executor` — output checks after API call, input checks before. Failures mark the step as FAILED with descriptive error messages.
 
 ### Medium-Term
 
@@ -268,14 +257,18 @@ Centralized secret store integration (Vault, AWS Secrets Manager) instead of pas
 |--------|-------|------|
 | Template renderer | 17 | `tests/test_template_renderer.py` |
 | API client (new path) | 13 | `tests/test_api_client_extended.py` |
+| API client (form-encoded) | — | `tests/test_api_client_form_encoded.py` |
 | API client (legacy) | 7 | `tests/test_api_client.py` |
 | State manager | 8 | `tests/test_state_manager.py` |
 | Graph validator | 7 | `tests/test_graph_validator.py` |
 | Edge inference | 6 | `tests/test_edge_inference.py` |
 | Topological sort | 4 | `tests/test_topological_sort.py` |
 | Workflow executor | 3 | `tests/test_workflow_executor.py` |
+| Workflow executor tracking | — | `tests/test_workflow_executor_tracking.py` |
 | Step executor | 2 | `tests/test_step_executor.py` |
-| **Total** | **67** | |
+| REST API | — | `tests/test_api.py` |
+| JSON storage | — | `tests/test_storage.py` |
+| **Total** | **88** | |
 
 All tests pass. Run with `pytest tests/ -v`.
 

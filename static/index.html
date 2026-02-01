@@ -213,17 +213,32 @@ async function renderRunDetail(runId) {
       }
     });
 
-    // Nodes with name + id
+    // Nodes with name + id + warning indicator
     wf.steps.forEach(s => {
       const p = pos[s.id]; if (!p) return;
-      const status = results[s.id]?.status || 'pending';
+      const r = results[s.id];
+      const status = r?.status || 'pending';
+      const hasWarnings = r?.warnings && r.warnings.length > 0;
       const cls = status === 'running' ? ' class="node-running"' : '';
-      svg += `<rect x="${p.x}" y="${p.y}" width="${nodeW}" height="${nodeH}" rx="8" fill="${colors[status]}" stroke="#bbb" stroke-width="1"${cls} style="cursor:pointer; transition: fill 0.3s ease" data-step="${s.id}"/>`;
+      svg += `<rect x="${p.x}" y="${p.y}" width="${nodeW}" height="${nodeH}" rx="8" fill="${colors[status]}" stroke="${hasWarnings ? '#f57f17' : '#bbb'}" stroke-width="${hasWarnings ? '2' : '1'}"${cls} style="cursor:pointer; transition: fill 0.3s ease" data-step="${s.id}"/>`;
       if (s.name) {
         svg += `<text x="${p.x + nodeW/2}" y="${p.y + 22}" text-anchor="middle" font-size="12" font-weight="bold" fill="#333" pointer-events="none">${s.name}</text>`;
         svg += `<text x="${p.x + nodeW/2}" y="${p.y + 38}" text-anchor="middle" font-size="10" fill="#888" pointer-events="none">${s.id}</text>`;
       } else {
         svg += `<text x="${p.x + nodeW/2}" y="${p.y + nodeH/2 + 4}" text-anchor="middle" font-size="12" fill="#333" pointer-events="none">${s.id}</text>`;
+      }
+      // Pre-execution severity indicator (top-left)
+      const step = stepMap[s.id];
+      const isNonCritical = step?.severity === 'non_critical';
+      const hasCriticalValidations = step?.validations?.some(v => v.critical !== false);
+      const hasAnyValidations = step?.validations?.length > 0;
+      if (isNonCritical) {
+        svg += `<text x="${p.x + 10}" y="${p.y + 14}" font-size="10" fill="#f57f17" pointer-events="none">●</text>`;
+      } else if (hasAnyValidations && hasCriticalValidations) {
+        svg += `<text x="${p.x + 10}" y="${p.y + 14}" font-size="10" fill="#c62828" pointer-events="none">⛨</text>`;
+      }
+      if (hasWarnings) {
+        svg += `<text x="${p.x + nodeW - 10}" y="${p.y + 14}" text-anchor="middle" font-size="14" fill="#f57f17" pointer-events="none">&#9888;</text>`;
       }
     });
     svg += '</svg>';
@@ -270,6 +285,7 @@ async function renderRunDetail(runId) {
       <p><strong>Tool:</strong> ${s.tool_id || '-'} &middot; <strong>Status:</strong> ${statusBadge(r.status || 'pending')} &middot; <strong>Duration:</strong> ${dur}</p>
       ${s.description ? `<p style="margin-top:8px; color:#666">${s.description}</p>` : ''}
       ${r.error ? `<p style="margin-top:8px; color:#c62828"><strong>Error:</strong> ${r.error}</p>` : ''}
+      ${r.warnings && r.warnings.length ? `<div style="margin-top:8px; padding:8px; background:#fff8e1; border-left:3px solid #f57f17; border-radius:4px"><strong style="color:#f57f17">&#9888; Warnings:</strong><ul style="margin:4px 0 0 16px; font-size:0.85rem">${r.warnings.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}
       ${mappingHtml}
       <p style="margin-top:8px"><strong>Output:</strong></p>
       <pre>${output.length > 2000 ? output.slice(0,2000) + '\n...(truncated)' : output}</pre>

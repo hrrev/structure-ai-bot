@@ -8,3 +8,7 @@ class StateResolutionError(Exception):
 
 class StepExecutionError(Exception):
     pass
+
+
+class StepValidationError(Exception):
+    pass
