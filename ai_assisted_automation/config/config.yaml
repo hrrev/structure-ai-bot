@@ -1,0 +1,15 @@
+llm:
+  provider: anthropic
+  model: claude-opus-4-5-20251101
+  api_key: ""  # or set AAA_LLM_API_KEY env var
+  max_tokens: 16384
+  thinking_budget: 0  # set > 0 to enable extended thinking (uses NativeOutput mode)
+
+# # OpenAI configuration:
+# llm:
+#   provider: openai
+#   model: gpt-5.2
+#   api_key: ""  # or set AAA_LLM_API_KEY env var
+#   host_url: https://api.openai.com/v1
+#   max_tokens: 16384
+#   thinking_budget: 10000

@@ -54,8 +54,13 @@ ai_assisted_automation/          # importable package (NOT scripts)
   storage/
     json_store.py                # JSON file-based persistence for workflows and runs
   cli.py                         # CLI: serve (with env-var tool_configs) and register commands
-  config/                        # placeholder — no config logic yet
-  planner/                       # placeholder — LLM planner not yet implemented
+  config/
+    settings.py                  # LLMConfig + Settings, load from YAML → env → defaults
+    config.yaml                  # default config (Anthropic Opus 4.5, commented OpenAI section)
+  planner/
+    planner.py                   # plan(): LLM call → validate → retry loop (up to 3 retries)
+    prompt.py                    # build_system_prompt(): renders tool catalog for LLM context
+    result_types.py              # PlanResult discriminated union (PlanSuccess | InsufficientTools)
 examples/                        # runnable scripts (outside package, standard Python convention)
   geo_weather_workflow.py        # 3-step: IP geolocation → weather + country info
   github_intel_workflow.py       # 6-step: repo info → 4 parallel fetches → POST summary
@@ -221,10 +226,23 @@ Built:
 - **GraphQL string escaping limitation identified**: free-text fields containing quotes/newlines break GraphQL query strings when embedded via template rendering (the rendered value goes inside a GraphQL string literal). Workaround: use short/safe extracted fields in mutation templates, avoid embedding raw paragraphs. The REST path (`requests.post(json=...)`) handles escaping automatically, but GraphQL mutations require the value inside the query string itself.
 - **CLI `serve` updated** with GitHub GraphQL tool configs (GITHUB_PAT env var)
 
+### Session 6: LLM Planner
+
+Built:
+- **Config system** (`config/settings.py`): YAML file → env vars (`AAA_LLM_PROVIDER`, `AAA_LLM_MODEL`, `AAA_LLM_API_KEY`, `AAA_LLM_HOST_URL`) → Pydantic defaults. `load_settings()` with explicit path, `AAA_CONFIG_FILE` env, or package-relative `config.yaml`.
+- **LLM planner** (`planner/planner.py`): `plan(goal, registry) -> Workflow | InsufficientTools`. Uses pydantic-ai with Anthropic Opus 4.5. Structured output via discriminated union (`PlanSuccess | InsufficientTools`). Retry loop feeds validation errors back to LLM (up to 3 retries with full conversation history).
+- **System prompt builder** (`planner/prompt.py`): renders complete tool catalog from registry — tool id, name, description, method, URL, auth type, input params (query/path/body template keys), output fields (response_extract). Includes input_mapping syntax rules, step format, edge rules, output schema.
+- **CLI `plan` subcommand**: `python -m ai_assisted_automation.cli plan "goal" --tools-dir tools/`
+- **Tests**: 6 planner tests (mocked LLM, no API calls) + 4 config tests
+
+Key findings:
+- **Tool output mode** (default pydantic-ai behavior, thinking disabled) produces the most reliable structured output with populated input_mappings.
+- **NativeOutput + thinking** produces valid JSON but empty `input_mapping: {}` — the JSON schema allows empty dicts since the Pydantic default is `{}`. Workaround: use tool output mode with `thinking_budget: 0`.
+- **Anthropic thinking + tool_choice=required are incompatible** — pydantic-ai auto-switches to prompted output mode which can produce trailing commas in JSON.
+- Planner conditionally uses `NativeOutput(PlanResult)` when thinking is enabled, regular `PlanResult` (tool output) when disabled.
+
 ## What's Not Built Yet
 
-- `planner/` — LLM-based workflow generation from natural language (the core value prop, Phase 2)
-- `config/` — runtime configuration (timeouts, retries, provider settings)
 - Step-level input/output validation (e.g., not_null checks on outputs)
 - Pre/post hook middleware chain (discussed, deferred)
 - Exploration-based graph planning (discussed, deferred)

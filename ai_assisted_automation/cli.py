@@ -29,6 +29,29 @@ def cmd_serve(args):
     uvicorn.run(app, host="0.0.0.0", port=args.port)
 
 
+def cmd_plan(args):
+    import asyncio
+
+    from ai_assisted_automation.planner import InsufficientTools, plan
+    from ai_assisted_automation.registry.tool_registry import ToolRegistry
+
+    registry = ToolRegistry()
+    registry.load_directory(args.tools_dir)
+
+    result = asyncio.run(plan(args.goal, registry, max_retries=args.max_retries))
+
+    if isinstance(result, InsufficientTools):
+        print(f"Cannot plan workflow: {result.reason}")
+        print(f"Missing capabilities: {', '.join(result.missing_capabilities)}")
+        sys.exit(1)
+
+    # Save to store and print
+    store = JsonStore(args.data_dir)
+    store.save_workflow(result)
+    print(f"Workflow generated and saved: {result.id} ({result.name})")
+    print(json.dumps(result.model_dump(mode="json"), indent=2, default=str))
+
+
 def cmd_register(args):
     store = JsonStore(args.data_dir)
     data = json.loads(open(args.file).read())
@@ -46,6 +69,12 @@ def main():
     serve_p.add_argument("--data-dir", default="data")
     serve_p.add_argument("--tools-dir", default="tools")
 
+    plan_p = sub.add_parser("plan", help="Generate a workflow from natural language")
+    plan_p.add_argument("goal", help="What the workflow should accomplish")
+    plan_p.add_argument("--tools-dir", default="tools")
+    plan_p.add_argument("--data-dir", default="data")
+    plan_p.add_argument("--max-retries", type=int, default=3)
+
     reg_p = sub.add_parser("register", help="Register a workflow from JSON")
     reg_p.add_argument("file", help="Path to workflow JSON file")
     reg_p.add_argument("--data-dir", default="data")
@@ -53,6 +82,8 @@ def main():
     args = parser.parse_args()
     if args.command == "serve":
         cmd_serve(args)
+    elif args.command == "plan":
+        cmd_plan(args)
     elif args.command == "register":
         cmd_register(args)
     else:
